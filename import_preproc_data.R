@@ -2,13 +2,19 @@
 # Gather data -------------------------------------------------------------
 
 # Ref: https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data
+# Setup functions ------------------------------------------------------------
+get_package <- function(package){
+    if (!package %in% installed.packages()){
+        install.packages(package, repos = "http://cran.rstudio.com/")
+    }
+    invisible(library(package, character.only = TRUE))
+}
 
-library(tidyverse)
-library(jsonlite)
-library(leaflet)
-library(ggmap)
-library(janitor)
-library(lubridate)
+
+packages_required <- c("tidyverse", "jsonlite", "sf", "tmaptools", "janitor",
+                       "leaflet", "maps", "ggmap", "ggthemes", "gganimate","lubridate")
+sapply(packages_required, get_package)
+
 covid_death <- read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv")
 covid_recoveries <- read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Recovered.csv")
 covid_confirmed <- read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv")
@@ -30,17 +36,23 @@ covid_master <- confirmed_long %>%
     full_join(deaths_long, by = c("date","province_state", "country_region","lat","long")) %>%
     full_join(recoveries_long, by = c("date", "province_state", "country_region","lat","long"))
 
-# Plot totals
-covid_master %>%
+# Plot totals ---------------------------
+## Global
+global_tot <- covid_master %>%
     group_by(date) %>%
     summarise(confirmed = sum(confirmed, na.rm = TRUE),
               deaths = sum(deaths, na.rm = TRUE),
               recoveries = sum(recoveries, na.rm = TRUE)) %>%
-    pivot_longer(-date, names_to = "outcome", values_to = "total") %>%
-    ggplot(aes(x = date, y = total, colour = outcome)) +
-        geom_line() + geom_point() +
-        theme_minimal() +
-        theme(legend.position = 'bottom') +
-        labs(title = "Coronavirus global outcomes - 2020",
-             x = "Date", y = "Cumulative total", color = "Outcomes") +
-        scale_colour_manual(values = c("orange2", 'red3', "green4"))
+    pivot_longer(-date, names_to = "outcome", values_to = "total")
+
+
+
+## Regional
+regional_tot <- covid_master %>%
+    group_by(date, province_state, country_region, lat, long) %>%
+    summarise(confirmed = sum(confirmed, na.rm = TRUE),
+              deaths = sum(deaths, na.rm = TRUE),
+              recoveries = sum(recoveries, na.rm = TRUE)) %>%
+    pivot_longer(cols = c(confirmed, deaths, recoveries),
+                 names_to = "outcome", values_to = "total")
+
