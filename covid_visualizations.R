@@ -44,6 +44,6 @@ world_plot <- world_map +
     ggtitle('Date {closest_state}') +
     labs(x= '', y='', color = "Outcomes", size = "Cumulative number of cases") +
     theme(axis.text = element_blank(), axis.ticks = element_blank())
-animate(world_plot, height = 1000, width =1500)
+animate(world_plot, height = 300, width = 500)
 
 anim_save("coronavirus_spread.gif", world_plot)

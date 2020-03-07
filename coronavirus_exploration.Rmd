@@ -155,7 +155,7 @@ Column {data-height=1000, data-width=1000, style="height:100pc;" .tabset .tabset
 
 ### Global aggregates over time
 
-```{r}
+```{r fig.width=6, fig.height=4}
 # Plot totals
 global_tot <- covid_master %>%
     group_by(date) %>%
