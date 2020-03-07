@@ -18,18 +18,33 @@ options(shiny.error =  function() {
   shiny.sanitize.errors = FALSE)
 
 # Get packages ------------------------------------------------------------
-get_package <- function(package){
-    if (!package %in% installed.packages()){
-        install.packages(package, repos = "http://cran.rstudio.com/")
-    }
-    invisible(library(package, character.only = TRUE))
-}
+# get_package <- function(package){
+# if (!package %in% installed.packages()){
+#     install.packages(package)
+# }
+#     invisible(library(package, character.only = TRUE))
+# }
 
+library(DT)
+library(flexdashboard)
+library(ggmap)
+library(gganimate)
+library(ggthemes)
+library(janitor)
+library(jsonlite)
+library(leaflet)
+library(lubridate)
+library(maps)
+library(plotly)
+library(sf)
+library(shiny)
+library(tidyverse)
+library(tmaptools)
 
-packages_required <- c("tidyverse", "jsonlite", "sf", "tmaptools", "janitor", "shiny",
-                       "leaflet", "maps", "ggmap", "ggthemes", "gganimate","lubridate",
-                       "flexdashboard", "DT", "plotly")
-sapply(packages_required, get_package)
+# packages_required <- c("tidyverse", "jsonlite", "sf", "tmaptools", "janitor", "shiny",
+#                        "leaflet", "maps", "ggmap", "ggthemes", "gganimate","lubridate",
+#                        "flexdashboard", "DT", "plotly")
+# sapply(packages_required, get_package)
 
 ```
 
@@ -63,6 +78,7 @@ covid_master <- confirmed_long %>%
 # Get the latest 
 covid_latest <- covid_master %>% 
     group_by(lat,long) %>%
+    filter(!is.na(confirmed)) %>% 
     filter_at(vars(starts_with("date")), any_vars(. == max(., na.rm = TRUE))) %>% 
      mutate(content = paste(paste0(province_state,', ' ,country_region), 
                            paste("# of confirmed =", confirmed), 
@@ -79,7 +95,6 @@ covid_latest_filtered <- reactive({
       dplyr::filter(country_region %in% input$country) 
   }
 })
-icon(name = "biohazard", class = NULL, lib = "font-awesome")
 ```
 
 Home
