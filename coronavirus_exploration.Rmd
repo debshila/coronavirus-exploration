@@ -5,6 +5,8 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: scroll
+    social: menu
+    source_code: https://github.com/debshila/coronavirus-exploration/
 fontsize: 14
 ---
 
@@ -150,7 +152,7 @@ renderValueBox({
 })
 ```
 
-Column {data-height=1000, data-width=1000, style="height:100pc;" .tabset .tabset-fade}
+Column {data-height=700, data-width=700 .tabset .tabset-fade}
 -----------------------------------------------------------------------
 
 ### Global aggregates over time
@@ -158,6 +160,7 @@ Column {data-height=1000, data-width=1000, style="height:100pc;" .tabset .tabset
 ```{r fig.width=6, fig.height=4}
 # Plot totals
 global_tot <- covid_master %>%
+    filter(!is.na(confirmed)) %>% 
     group_by(date) %>%
     summarise(confirmed = sum(confirmed, na.rm = TRUE),
               deaths = sum(deaths, na.rm = TRUE),
@@ -171,7 +174,7 @@ global_total_over_time <- global_tot %>%
         geom_text(data = global_tot %>%
                       filter(date == max(.$date)),
                   aes(label = outcome, colour = outcome, x = max(date), y = total),
-                  size = 8, nudge_y = 1500, nudge_x = -3) +
+                  size = 6, nudge_y = 1500, nudge_x = -3) +
         theme(legend.position = 'none') +
         labs(title = "Coronavirus global outcomes - 2020",
              x = "Date", y = "Cumulative total", color = "Outcomes") +
@@ -198,7 +201,7 @@ leafletOutput('coronavirus_plot', height = 500, width = 600)
 ```
 
 ### Spread over time
-```{r, out.width = "2000px"}
+```{r, out.width = 12, out.height=8}
 knitr::include_graphics("coronavirus_spread.gif")
 ```
 
