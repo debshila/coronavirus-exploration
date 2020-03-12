@@ -3,6 +3,7 @@ title: "Exploring the coronavirus epidemic"
 runtime: shiny
 output: 
   flexdashboard::flex_dashboard:
+    theme: cosmo
     orientation: rows
     vertical_layout: scroll
     social: menu
@@ -29,19 +30,18 @@ options(shiny.error =  function() {
 
 library(DT)
 library(flexdashboard)
-library(ggmap)
 library(gganimate)
 library(ggthemes)
 library(janitor)
-library(jsonlite)
 library(leaflet)
 library(lubridate)
 library(maps)
 library(plotly)
-library(sf)
 library(shiny)
 library(tidyverse)
-library(tmaptools)
+library(emojifont)
+library(patchwork)
+
 
 # packages_required <- c("tidyverse", "jsonlite", "sf", "tmaptools", "janitor", "shiny",
 #                        "leaflet", "maps", "ggmap", "ggthemes", "gganimate","lubridate",
@@ -75,10 +75,12 @@ confirmed_long  <- convert_to_long(covid_confirmed, "confirmed")
 
 covid_master <- confirmed_long %>%
     full_join(deaths_long, by = c("date","province_state", "country_region","lat","long")) %>%
-    full_join(recoveries_long, by = c("date", "province_state", "country_region","lat","long"))
+    full_join(recoveries_long, by = c("date", "province_state", "country_region","lat","long")) %>% 
+      mutate(country = if_else(grepl('China', country_region), "China", 
+                               if_else(grepl("Iran", country_region),"Iran", country_region))) 
 
 # Get the latest 
-covid_latest <- covid_master %>% 
+covid_latest_wide <- covid_master %>% 
     group_by(lat,long) %>%
     filter(!is.na(confirmed)) %>% 
     filter_at(vars(starts_with("date")), any_vars(. == max(., na.rm = TRUE))) %>% 
@@ -86,7 +88,9 @@ covid_latest <- covid_master %>%
                            paste("# of confirmed =", confirmed), 
                            paste("# of deaths =", deaths),
                            paste("# of recovered =", recoveries),
-                           sep = "<br/>")) %>% 
+                           sep = "<br/>")) 
+
+covid_latest <- covid_latest_wide %>% 
     pivot_longer(cols = c(confirmed, deaths, recoveries), names_to = "outcome", values_to = "total")
 
 covid_latest_filtered <- reactive({
@@ -99,10 +103,11 @@ covid_latest_filtered <- reactive({
 })
 ```
 
+
+
 Home
 =================================================================
-Column {.sidebar}
------------------------------------------------------------------------
+
 ```{r filters}
 selectizeInput("country", 
                "Country",         
@@ -122,7 +127,7 @@ row
 renderValueBox({
     valueBox(value = format(sum(covid_latest$total[covid_latest$outcome == 'confirmed']), big.mark = ","), 
            caption = "<b># of Confirmed</b>", 
-           icon = HTML('<img src="smiley.gif" alt="Smiley face" height="42" width="42">'), 
+           icon = "fa-users", 
            color = "orange")
 
 })
@@ -132,9 +137,9 @@ renderValueBox({
 
 ```{r}
 renderValueBox({
-    valueBox(value = format(sum(covid_latest$total[covid_latest$outcome == 'deaths']), big.mark = ","), 
+    valueBox(value = tags$p(format(sum(covid_latest$total[covid_latest$outcome == 'deaths']), big.mark = ","), style = "font-color: #FFFFFF;"), 
            caption = "<b># of Deaths</b>", 
-           icon = "fa-skull-crossbones", 
+           icon = fontawesome("fa-skull-crossbones"),#icon("danger", lib = "font-awesome"), 
            color = "darkred")
 
 })
@@ -184,9 +189,58 @@ global_total_over_time %>%
     ggplotly()
 ```
 
+### Country summary
+
+```{r country totals}
+covid_country_summary <- covid_latest_wide %>% 
+  group_by(country) %>% 
+  summarise(confirmed = sum(confirmed, na.rm = TRUE),
+          deaths = sum(deaths, na.rm = TRUE),
+          recoveries = sum(recoveries, na.rm = TRUE)) %>% 
+  arrange(desc(confirmed))
 
 
-### Reported incidents of coronavirus across the globe
+ 
+DT::renderDataTable(covid_country_summary,
+                    server = TRUE,
+                    extensions = c("Responsive", "Buttons"),
+                    class = "display",
+                    options = list(searchHighlight = TRUE,
+                                    pageLength = 20,
+                                    fixedColumns = TRUE,
+                                    autoWidth = TRUE,
+                                    ordering = TRUE))
+  # knitr::kable(caption = "Countries arranged by the number of confirmed Covid-19 positive cases") %>% 
+  # kableExtra::kable_styling()
+
+
+```
+
+
+### Country timeline
+```{r country timeline}
+# Select top n
+n <- 10
+covid_country_timeline <- covid_master %>% 
+  filter(country %in% unlist(covid_country_summary[1:n,"country"])) %>% 
+  group_by(country, date) %>% 
+  summarise(confirmed = sum(confirmed, na.rm = TRUE),
+          deaths = sum(deaths, na.rm = TRUE),
+          recoveries = sum(recoveries, na.rm = TRUE)) %>% 
+  arrange(desc(confirmed))
+
+
+
+covid_country_timeline %>% 
+  ggplot(aes(x = date, y = confirmed, color = reorder(country, -confirmed))) + 
+  geom_line(alpha = .5) + 
+  geom_point(alpha = .5) + 
+  theme_minimal() + 
+  labs(title = "Countries ranked by the number of confirmed cases (Top 10)", x = "Date", y ="Confirmed cases", color = "Country") 
+```
+
+
+### Coronavirus across the globe
 
 ```{r geolocate,fig.width=12, fig.height=8}
 output$coronavirus_plot <- renderLeaflet({
@@ -194,8 +248,11 @@ output$coronavirus_plot <- renderLeaflet({
     leaflet(., options = leafletOptions(
                 zoomControl = TRUE)) %>%
     addTiles() %>%
-    addMarkers(lat = ~lat, lng = ~long, popup = ~content) 
+    addMarkers(lat = ~lat, lng = ~long, popup = ~content) %>% 
+    setView(lat = 30.9756, lng = 112.2707, zoom = 2)
 })
+
+
   
 leafletOutput('coronavirus_plot', height = 500, width = 600)    
 ```
@@ -205,12 +262,16 @@ leafletOutput('coronavirus_plot', height = 500, width = 600)
 knitr::include_graphics("coronavirus_spread.gif")
 ```
 
-Data
+Latest Data
 ==============================================
 ```{r}
 DT::renderDataTable(covid_latest_filtered() %>% 
-                      select(-content) %>% 
-                      pivot_wider(names_from = outcome, values_from = total), 
+                      ungroup() %>% 
+                      select(country_region, province_state, outcome, total) %>% 
+                      mutate(total = format(total, big.mark = ",")) %>% 
+                      pivot_wider(names_from = outcome, values_from = total) %>% arrange(desc(confirmed)) %>% 
+                        
+                        rename(Country = country_region, Province = province_state), 
                     server = TRUE,
                     extensions = c("Responsive", "Buttons"),
                     class = "display",
