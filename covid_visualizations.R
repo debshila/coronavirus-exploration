@@ -38,7 +38,7 @@ world_plot <- world_map +
           legend.title = element_text(size = 14, hjust = 0),
           legend.position = "bottom",
           plot.title = element_text(hjust = 0,
-                                    size = 30, face = "bold",
+                                    size = 12, face = "bold",
                                     margin=margin(b = 10, unit = "pt"))) +
     transition_states(date, transition_length = 1, state_length = 1) +
     ggtitle('Date {closest_state}') +
@@ -48,4 +48,4 @@ world_plot <- world_map +
 # animate(world_plot, height = 300, width = 500, renderer = av_renderer)
 
 anim_save("coronavirus_spread.gif", world_plot,
-          height = 300, width = 400)
+          height = 350, width = 400)
